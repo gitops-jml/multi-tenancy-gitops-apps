@@ -1,0 +1,71 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: ibm-apic-gateway-v5c-instance
+  annotations:
+    argocd.argoproj.io/sync-wave: "250"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+  labels:
+    gitops.tier.group: cloudpak
+    gitops.tier.layer: services
+spec:
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+  destination:
+    namespace: gateway-v5c
+    server: https://kubernetes.default.svc
+  project: services
+  source:
+    path: instances/ibm-apic-gw-v5c-instance
+    helm:
+      values: |
+        ibm-apic-gtw-instance:
+          ibmapicgtwinstance:
+            name: gateway
+            spec:
+              profile: n1xc4.m8
+              apicGatewayServiceV5CompatibilityMode: true
+              gatewayEndpoint:
+                annotations:
+                  certmanager.k8s.io/issuer: ingress-issuer
+                hosts:
+                  - name: gw-v5c.apps.phil-new-sandbox.cp.fyre.ibm.com
+                    secretName: gateway-endpoint-secret
+              gatewayManagerEndpoint:
+                annotations:
+                  certmanager.k8s.io/issuer: ingress-issuer
+                hosts:
+                  - name: gwmanager-v5c.apps.phil-new-sandbox.cp.fyre.ibm.com
+                    secretName: gateway-manager-endpoint-secret
+              apicGatewayServiceTLS:
+                secretName: gateway-service
+              apicGatewayPeeringTLS:
+                secretName: gateway-peering
+              datapowerLogLevel: 3
+              license:
+                accept: true
+                license: L-GVEN-GFUPVE
+                use: nonproduction
+              tokenManagementService:
+                enabled: true
+                storage:
+                  storageClassName: rook-ceph-block
+                  volumeSize: 30Gi
+              adminUser:
+                secretName: datapower-admin-credentials
+              microServiceSecurity: certManager
+              syslogConfig:
+                enabled: false
+                remoteHost: gateway.example.com
+                remotePort: 200
+                secretName: mySecretName
+              # podAutoScaling:
+              #   hpa:
+              #     maxReplicas: 5
+              #     minReplicas: 3
+              #     targetCPUUtilizationPercentage: 80
+              #     targetMemoryUtilizationPercentage: 80
+              #   method: HPA
